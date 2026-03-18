@@ -13,6 +13,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
 import warnings
 warnings.filterwarnings("ignore")
+import matplotlib.pyplot as plt
 
 # WINDOW is how many past games to use for rolling averages (with min_periods=3)
 WINDOW = 10
@@ -21,8 +22,8 @@ FEATURES = ["offRatingDiff", "defRatingDiff", "netRatingDiff", "restDiff", "b2bD
 # Train model
 print("Loading data and training model...")
 
-games = pd.read_csv("Games.csv", low_memory=False)
-stats = pd.read_csv("TeamStatistics.csv", low_memory=False)
+games = pd.read_csv("data/Games.csv", low_memory=False)
+stats = pd.read_csv("data/TeamStatistics.csv", low_memory=False)
 
 games["gameDateTimeEst"] = pd.to_datetime(games["gameDateTimeEst"])
 stats["gameDateTimeEst"] = pd.to_datetime(stats["gameDateTimeEst"])
@@ -181,6 +182,36 @@ def predict_game_prob(home_id, away_id, game_date):
     ]])
     return model.predict_proba(scaler.transform(features))[0, 1]
 
+# create graph 
+def plot_game_by_game_predictions(game_dates, probs, actual_results, team_name, season_label):
+    """
+    Line chart of model predictions vs actual results for each game.
+
+    Parameters:
+    - game_dates: list of datetime objects
+    - probs: list of predicted win probabilities for the selected team
+    - actual_results: list of 1 (win) or 0 (loss)
+    - team_name: string
+    - season_label: string
+    """
+
+    plt.figure()
+
+    # Model predicted probability line
+    plt.plot(game_dates, probs, label="Predicted Win Probability")
+
+    # Actual results (0 or 1)
+    plt.plot(game_dates, actual_results, linestyle='--', marker='o', label="Actual Result (1=Win, 0=Loss)")
+
+    plt.title(f"{team_name} {season_label}\nGame-by-Game Predictions vs Actual Results")
+    plt.xlabel("Game Date")
+    plt.ylabel("Win Probability / Result")
+
+    plt.legend()
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    plt.show()
+
 # Mode 1: Single game
 def mode_single_game():
     home_team = pick_team("\nSelect HOME team:")
@@ -213,6 +244,10 @@ def mode_single_game():
 
 # Mode 2: Full season 
 def mode_season():
+    game_dates = []
+    probs = []
+    actual_results = []
+
     team = pick_team("\nSelect team:")
     team_id = team["teamId"]
 
@@ -297,6 +332,10 @@ def mode_season():
             predicted_wins += 1
         if team_wins_actual:
             actual_wins += 1
+        
+        game_dates.append(game_date)
+        probs.append(team_prob)
+        actual_results.append(1 if team_wins_actual else 0)
 
         print(f"{game_date.strftime('%Y-%m-%d'):<12} {matchup:<34} {pred_label:>5} {team_prob:>6.1%} {actual_label:>7} {check:>4}")
 
@@ -308,8 +347,15 @@ def mode_season():
     print(f"  Predicted W-L   : {predicted_wins}-{total - predicted_wins}")
     print(f"  Actual W-L      : {actual_wins}-{total - actual_wins}")
     print()
+    plot_game_by_game_predictions(
+        game_dates,
+        probs,
+        actual_results,
+        team["fullName"],
+        season_label
+    )
 
-# ── Main loop ─────────────────────────────────────────────────────────────────
+# Main loop
 while True:
     print("=" * 50)
     print("\nWhat would you like to do?")
