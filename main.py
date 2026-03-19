@@ -347,6 +347,47 @@ def mode_season():
     print(f"  Predicted W-L   : {predicted_wins}-{total - predicted_wins}")
     print(f"  Actual W-L      : {actual_wins}-{total - actual_wins}")
     print()
+
+    # =========================================================================
+    # BASELINE 1: Always predict the home team wins
+    # For each game, predict the selected team wins if they are the home team,
+    # otherwise predict they lose. This is the simplest possible baseline —
+    # it assumes home court advantage always decides the outcome.
+    # =========================================================================
+    baseline1_correct = 0
+    for game_result, game in zip(actual_results, season_games.itertuples()):
+        predicted_team_wins = (game.hometeamId == team_id)
+        # if its the home team and they won, then add to correct 
+        if predicted_team_wins == bool(game_result):
+            baseline1_correct += 1
+    baseline1_accuracy = baseline1_correct / total if total > 0 else 0
+
+    # =========================================================================
+    # BASELINE 2: Random prediction weighted by the training home win rate
+    # home_win_rate is computed from df (all pre-season training games). 
+    # For each game, flip a weighted coin: if the selected team is home, predict
+    # win with probability = home_win_rate; if away, predict win with probability
+    # = 1 - home_win_rate. random_state=42 ensures reproducibility.
+    # home team usually wins, but not always...
+    # =========================================================================
+    home_win_rate = df["homeWin"].mean()
+    rng = np.random.default_rng(42)
+    baseline2_correct = 0
+    for game_result, game in zip(actual_results, season_games.itertuples()):
+        p = home_win_rate if game.hometeamId == team_id else (1 - home_win_rate)
+        predicted_team_wins = rng.random() < p
+        if predicted_team_wins == bool(game_result):
+            baseline2_correct += 1
+    baseline2_accuracy = baseline2_correct / total if total > 0 else 0
+ 
+    print(f"  Baseline 1 (always home team wins) accuracy : {baseline1_accuracy:.1%}")
+    print(f"--- BASELINE COMPARISONS ---")
+    print(f"  Baseline 1 — Always Home (no model)        : {baseline1_correct} / {total}  ({baseline1_accuracy:.1%} accuracy)")
+    print(f"  Baseline 2 — Random weighted ({home_win_rate:.0%} home rate) : {baseline2_correct} / {total}  ({baseline2_accuracy:.1%} accuracy)")
+    print(f"  Our Model  — Logistic Regression            : {correct} / {total}  ({correct/total:.1%} accuracy)")
+    print()
+
+    # graph
     plot_game_by_game_predictions(
         game_dates,
         probs,
