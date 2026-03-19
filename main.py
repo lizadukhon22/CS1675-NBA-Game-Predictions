@@ -368,7 +368,7 @@ def mode_season():
     # For each game, flip a weighted coin: if the selected team is home, predict
     # win with probability = home_win_rate; if away, predict win with probability
     # = 1 - home_win_rate. random_state=42 ensures reproducibility.
-    # home team usually wins, but not always... this adds this randomness to the baseline to make it more competitive.
+    # home team usually wins, but not always... this adds this randomness to the baseline to make it more competitive. A good model should beat this by learning which features indicate when the home team is more or less likely to win.
     # =========================================================================
     home_win_rate = df["homeWin"].mean()
     rng = np.random.default_rng(42)
