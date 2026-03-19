@@ -368,7 +368,7 @@ def mode_season():
     # For each game, flip a weighted coin: if the selected team is home, predict
     # win with probability = home_win_rate; if away, predict win with probability
     # = 1 - home_win_rate. random_state=42 ensures reproducibility.
-    # home team usually wins, but not always...
+    # home team usually wins, but not always... this adds this randomness to the baseline to make it more competitive.
     # =========================================================================
     home_win_rate = df["homeWin"].mean()
     rng = np.random.default_rng(42)
@@ -379,8 +379,7 @@ def mode_season():
         if predicted_team_wins == bool(game_result):
             baseline2_correct += 1
     baseline2_accuracy = baseline2_correct / total if total > 0 else 0
- 
-    print(f"  Baseline 1 (always home team wins) accuracy : {baseline1_accuracy:.1%}")
+
     print(f"--- BASELINE COMPARISONS ---")
     print(f"  Baseline 1 — Always Home (no model)        : {baseline1_correct} / {total}  ({baseline1_accuracy:.1%} accuracy)")
     print(f"  Baseline 2 — Random weighted ({home_win_rate:.0%} home rate) : {baseline2_correct} / {total}  ({baseline2_accuracy:.1%} accuracy)")
