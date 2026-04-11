@@ -7,129 +7,39 @@ Options:
   2. Predict a full season for a team (pick team + season year)
 """
 
-import pandas as pd
-import numpy as np
-from sklearn.linear_model import LogisticRegression
-from sklearn.preprocessing import StandardScaler
 import warnings
 warnings.filterwarnings("ignore")
+
+import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 
-# WINDOW is how many past games to use for rolling averages (with min_periods=3)
-WINDOW = 10
-FEATURES = ["offRatingDiff", "defRatingDiff", "netRatingDiff", "restDiff", "b2bDiff"]
+from model import (
+    load_data,
+    build_team_name_map,
+    build_team_list,
+    get_feature_matrix,
+    train_logistic_model,
+    train_random_forest_model,
+    get_rest,
+    get_rolling_stats
+)
 
-# Train model
+
 print("Loading data and training model...")
 
-games = pd.read_csv("data/Games.csv", low_memory=False)
-stats = pd.read_csv("data/TeamStatistics.csv", low_memory=False)
+games, stats, df = load_data()
+name_map, all_names = build_team_name_map(games)
+team_list = build_team_list(all_names)
 
-games["gameDateTimeEst"] = pd.to_datetime(games["gameDateTimeEst"])
-stats["gameDateTimeEst"] = pd.to_datetime(stats["gameDateTimeEst"])
+X, y = get_feature_matrix(df)
+log_model, log_scaler = train_logistic_model(X, y)
+rf_model = train_random_forest_model(X, y)
 
-# Model is only trained on regular season games because preseason/postseason data is not always predictive of regular season performance
-games = games[games["gameType"] == "Regular Season"].copy()
-stats = stats[stats["gameId"].isin(games["gameId"])].copy()
-
-# Calculate estimated possessions per game
-# Basic Possession Formula=0.96*[(Field Goal Attempts)+(Turnovers)+0.44*(Free Throw Attempts)-(Offensive Rebounds)]
-# Source: https://www.nbastuffer.com/analytics101/possession/
-stats["possessions"] = (
-    0.96 * (stats["fieldGoalsAttempted"] - stats["reboundsOffensive"]
-    + stats["turnovers"] + 0.44 * stats["freeThrowsAttempted"])
-).replace(0, np.nan)
-
-# Calculate offensive rating, defensive rating, and net rating
-stats["offRating"] = (stats["teamScore"] / stats["possessions"]) * 100
-stats["defRating"] = (stats["opponentScore"] / stats["possessions"]) * 100
-stats["netRating"] = stats["offRating"] - stats["defRating"]
-
-# Sort the dataframe by chronological order for each team
-stats.sort_values(["teamId", "gameDateTimeEst"], inplace=True)
-# Reset index after sorting to keep it clean
-stats.reset_index(drop=True, inplace=True)
-
-# For each team, compute a rolling average of the shifted values over a window of size WINDOW
-# - Uses only previous games (because of shift)
-# - Requires at least 3 prior games to produce a value (min_periods=3)
-# - Stores result in a new column like "roll_offRating", "roll_defRating", etc.
-for col in ["offRating", "defRating", "netRating"]:
-    # this shift prevents data leakage by ensuring we only use stats from previous games
-    shifted = stats.groupby("teamId")[col].shift(1)
-    stats[f"roll_{col}"] = (
-        shifted.groupby(stats["teamId"])
-               .transform(lambda s: s.rolling(WINDOW, min_periods=3).mean())
-    )
-
-# Calculate rest days and back-to-back status
-stats["prevGameDate"] = stats.groupby("teamId")["gameDateTimeEst"].shift(1)
-stats["restDays"] = (
-    (stats["gameDateTimeEst"] - stats["prevGameDate"]).dt.total_seconds() / 86400
-).fillna(3)
-stats["isB2B"] = (stats["restDays"] < 1.5).astype(int)
-
-# Separate home and away stats, then merge on gameId to get one row per game with both teams' stats
-home_df = stats[stats["home"] == 1][["gameId", "teamId", "roll_offRating", "roll_defRating", "roll_netRating", "restDays", "isB2B", "win"]].copy()
-away_df = stats[stats["home"] == 0][["gameId", "teamId", "roll_offRating", "roll_defRating", "roll_netRating", "restDays", "isB2B"]].copy()
-home_df.columns = ["gameId", "homeTeamId", "home_offRtg", "home_defRtg", "home_netRtg", "home_rest", "home_b2b", "homeWin"]
-away_df.columns = ["gameId", "awayTeamId", "away_offRtg", "away_defRtg", "away_netRtg", "away_rest", "away_b2b"]
-
-# Merge home and away data into a single row per game using gameId
-df = home_df.merge(away_df, on="gameId", how="inner")
-
-# Positive values mean home team has the advantage in that metric
-df["offRatingDiff"] = df["home_offRtg"] - df["away_offRtg"]
-df["defRatingDiff"] = df["home_defRtg"] - df["away_defRtg"]
-df["netRatingDiff"] = df["home_netRtg"] - df["away_netRtg"]
-df["restDiff"]      = df["home_rest"]   - df["away_rest"]
-df["b2bDiff"]       = df["home_b2b"]   - df["away_b2b"]
-
-# Remove rows with missing values in the selected feature columns. This ensures clean input for model training
-df.dropna(subset=FEATURES, inplace=True)
-
-# Start the model training !
-# Extract feature matrix (X) using the selected feature columns
-# .values converts the DataFrame into a NumPy array for model input
-X = df[FEATURES].values
-# Extract target variable (y): whether the home team won (1) or lost (0)
-y = df["homeWin"].astype(int).values
-scaler = StandardScaler()
-
-# Initialize logistic regression model:
-# - penalty="l2": ridge regularization to prevent overfitting
-# - C=1.0: regularization strength (lower = stronger regularization)
-# - solver="lbfgs": optimization algorithm
-# - max_iter=1000: increase iterations to ensure convergence
-# - random_state=42: ensures reproducibility
-model  = LogisticRegression(penalty="l2", C=1.0, solver="lbfgs", max_iter=1000, random_state=42)
-model.fit(scaler.fit_transform(X), y)
-
-# Build current team name map from games CSV (most recent name per teamId) 
-home_names = games[["hometeamId", "hometeamCity", "hometeamName", "gameDateTimeEst"]].rename(
-    columns={"hometeamId": "teamId", "hometeamCity": "teamCity", "hometeamName": "teamName"})
-away_names = games[["awayteamId", "awayteamCity", "awayteamName", "gameDateTimeEst"]].rename(
-    columns={"awayteamId": "teamId", "awayteamCity": "teamCity", "awayteamName": "teamName"})
-all_names = pd.concat([home_names, away_names])
-all_names["fullName"] = all_names["teamCity"] + " " + all_names["teamName"]
-# Most recent name per teamId
-name_map = (
-    all_names.sort_values("gameDateTimeEst")
-             .groupby("teamId").last()["fullName"]
-             .to_dict()
-)
-
-# Team list for selection (active in last 2 seasons)
-latest_game = (
-    all_names.sort_values("gameDateTimeEst")
-             .groupby("teamId").last()[["gameDateTimeEst", "fullName"]]
-             .reset_index()
-)
-team_list = (
-    latest_game[latest_game["gameDateTimeEst"] >= "2023-10-01"]
-    .sort_values("fullName")
-    .reset_index(drop=True)
-)
+# to be updated when user chooses model
+curr_model = None
+curr_scaler = None
+curr_model_name = None
 
 print("Model ready.\n")
 
@@ -148,31 +58,15 @@ def pick_team(prompt, exclude_id=None):
             pass
         print("  Invalid — try again.")
 
-def get_rest(team_id, before_date):
-    played = stats[
-        (stats["teamId"] == team_id) &
-        (stats["gameDateTimeEst"] < before_date)
-    ]["gameDateTimeEst"]
-    if played.empty:
-        return 3.0
-    return (before_date - played.max()).total_seconds() / 86400
 
-def get_rolling_stats(team_id, before_date):
-    played = stats[
-        (stats["teamId"] == team_id) &
-        (stats["gameDateTimeEst"] < before_date)
-    ].sort_values("gameDateTimeEst")
-    if len(played) < 3:
-        return None
-    return played[["roll_offRating", "roll_defRating", "roll_netRating"]].iloc[-1]
 
 def predict_game_prob(home_id, away_id, game_date):
-    h = get_rolling_stats(home_id, game_date)
-    a = get_rolling_stats(away_id, game_date)
+    h = get_rolling_stats(stats, home_id, game_date)
+    a = get_rolling_stats(stats, away_id, game_date)
     if h is None or a is None:
         return None
-    home_rest = get_rest(home_id, game_date)
-    away_rest = get_rest(away_id, game_date)
+    home_rest = get_rest(stats, home_id, game_date)
+    away_rest = get_rest(stats, away_id, game_date)
     features = np.array([[
         h["roll_offRating"] - a["roll_offRating"],
         h["roll_defRating"] - a["roll_defRating"],
@@ -180,7 +74,35 @@ def predict_game_prob(home_id, away_id, game_date):
         home_rest - away_rest,
         (1 if home_rest < 1.5 else 0) - (1 if away_rest < 1.5 else 0),
     ]])
-    return model.predict_proba(scaler.transform(features))[0, 1]
+    
+    if curr_scaler is not None:
+        features = curr_scaler.transform(features)
+    
+    return curr_model.predict_proba(features)[0, 1]
+
+# switch between using logisitic regression prediciton
+# or random forest prediction
+def choose_model():
+    global curr_model, curr_scaler, curr_model_name
+    print("\nSelect predicition model:")
+    print("    1. Logistic Regresion")
+    print("    2. Random Forest")
+    
+    while True:
+        choice = input("Enter choice: ").strip()
+        
+        if choice == "1":
+            curr_model = log_model
+            curr_scaler = log_scaler
+            curr_model_name = "Logistic Regression"
+            break
+        elif choice == "2":
+            curr_model = rf_model
+            curr_scaler = None
+            curr_model_name = "Random Forest"
+            break
+        else:
+            print("\nInvalid input - enter 1 or 2.")
 
 # create graph 
 def plot_game_by_game_predictions(game_dates, probs, actual_results, team_name, season_label):
@@ -383,7 +305,7 @@ def mode_season():
     print(f"--- BASELINE COMPARISONS ---")
     print(f"  Baseline 1 — Always Home (no model)        : {baseline1_correct} / {total}  ({baseline1_accuracy:.1%} accuracy)")
     print(f"  Baseline 2 — Random weighted ({home_win_rate:.0%} home rate) : {baseline2_correct} / {total}  ({baseline2_accuracy:.1%} accuracy)")
-    print(f"  Our Model  — Logistic Regression            : {correct} / {total}  ({correct/total:.1%} accuracy)")
+    print(f"  Our Model  — {curr_model_name:<29}: {correct} / {total}  ({correct/total:.1%} accuracy)")
     print()
 
     # graph
@@ -395,21 +317,32 @@ def mode_season():
         season_label
     )
 
-# Main loop
-while True:
-    print("=" * 50)
-    print("\nWhat would you like to do?")
-    print("  1. Predict a single game")
-    print("  2. Predict a full season for a team")
-    print("  3. Quit")
+def main():
+    # allow users to use logistic regression or rf model
+    choose_model()
 
-    choice = input("\nEnter choice: ").strip()
+    # Main loop
+    while True:
+        print("=" * 50)
+        print(f"\nCurrent model: {curr_model_name}")
+        print("\nWhat would you like to do?")
+        print("  1. Predict a single game")
+        print("  2. Predict a full season for a team")
+        print("  3. Change model")
+        print("  4. Quit")
 
-    if choice == "1":
-        mode_single_game()
-    elif choice == "2":
-        mode_season()
-    elif choice == "3":
-        break
-    else:
-        print("  Invalid — enter 1, 2, or 3.")
+        choice = input("\nEnter choice: ").strip()
+
+        if choice == "1":
+            mode_single_game()
+        elif choice == "2":
+            mode_season()
+        elif choice == "3":
+            choose_model()
+        elif choice == "4":
+            break
+        else:
+            print("  Invalid — enter 1, 2, or 3.")
+
+if __name__ == "__main__":
+    main()
