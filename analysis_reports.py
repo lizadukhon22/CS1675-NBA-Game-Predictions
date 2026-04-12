@@ -1,3 +1,14 @@
+""" 
+File: analysis_reports.py
+
+Analyzes evaluation results to determine feature importance and optimal model configurations.
+    - Identifies top-performing models based on ROC-AUC
+    - Computes feature frequency in top-tier models
+    - Performs marginal contribution analysis
+    - Evaluates feature redundancy and model stability
+    - Generates plots and summary tables
+"""
+
 import pandas as pd
 import matplotlib.pyplot as plt
 from collections import Counter
@@ -7,10 +18,7 @@ PRIMARY_METRIC = "roc_auc"
 MODEL_NAMES = ["Logistic Regression", "Random Forest"]
 TOP_TIER_DELTA = 0.002
 BASE_FEATURES = [
-    "offRatingDiff",
-    "defRatingDiff",
     "netRatingDiff",
-    "restDiff",
     "b2bDiff"
 ]
 
@@ -18,18 +26,26 @@ def parse_features (feature_string):
     """ 
     converts comma-separated feature string into a storted list of features
     """
+    # handle baseline rows or missing values
     if pd.isna(feature_string) or feature_string == "BASELINE":
         return[]
+    
+    # split string into individual feature names 
     return sorted([f.strip() for f in str(feature_string).split(",") if f.strip()])
 
 def add_feature_columns (df):
     """
-    Add parsed feature helpers to the dataframe.
+    add parsed feature helpers to the dataframe.
     """
     df = df.copy()
+    
+    # convert string representation to list
     df["feature_list"] = df["features"].apply(parse_features)
+    
+    # count number of features in each model 
     df["num_features"] = df["feature_list"].apply(len)
 
+    # create boolean flags for each base feature
     for feature in BASE_FEATURES:
         df[f"has_{feature}"] = df["feature_list"].apply(lambda feats: feature in feats)
 
@@ -38,19 +54,18 @@ def add_feature_columns (df):
 def load_data():
     df = pd.read_csv(RESULTS_FILE)
 
-    # keep only real models
-    df = df[df["model"].isin(MODEL_NAMES).copy()]
-    df["num_features"] = df["features"].apply(lambda x:len(x.split(",")))
-    df = add_feature_columns(df)
+    df = df[df["model"].isin(MODEL_NAMES).copy()] # exclude baseline rows
+    df = add_feature_columns(df) 
     return df
 
 def get_top_tier(df: pd.DataFrame) -> pd.DataFrame:
     """
     Keep all rows within TOP_TIER_DELTA of the best PRIMARY_METRIC score.
     """
-    best_score = df[PRIMARY_METRIC].max()
-    cutoff = best_score - TOP_TIER_DELTA
-    top_tier = df[df[PRIMARY_METRIC] >= cutoff].copy()
+
+    best_score= df[PRIMARY_METRIC].max()    # best score across all models
+    cutoff = best_score - TOP_TIER_DELTA    # cutoff range
+    top_tier = df[df[PRIMARY_METRIC] >= cutoff].copy() # filter by models in cutoff
 
     print("\n=== TOP TIER SUMMARY ===")
     print(f"Best {PRIMARY_METRIC}: {best_score:.4f}")
@@ -61,7 +76,7 @@ def get_top_tier(df: pd.DataFrame) -> pd.DataFrame:
 
 def print_top_models(df: pd.DataFrame, n: int = 15) -> None:
     """
-    Print top N models by ROC-AUC, then F1.
+    Print top n models by ROC-AUC, then F1.
     """
     cols = ["model", "features", "num_features", "roc_auc", "f1", "accuracy", "precision", "recall"]
     top = df.sort_values(["roc_auc", "f1"], ascending=[False, False]).head(n)
@@ -85,13 +100,16 @@ def roc_vs_num_features(df):
 
 def feature_frequency_top_tier(top_tier: pd.DataFrame) -> pd.DataFrame:
     """
-    Count how often each feature appears in top-tier models.
+    Identify which features appear msot in top-tier models
     """
+    
+    # count item frequency across top models
     counter = Counter()
     for feats in top_tier["feature_list"]:
         for f in feats:
             counter[f] += 1
 
+    # convert counts into percentage
     freq_df = pd.DataFrame(
         [{"feature": f, "count": c} for f, c in counter.items()]
     ).sort_values("count", ascending=False)
@@ -112,14 +130,21 @@ def feature_frequency_top_tier(top_tier: pd.DataFrame) -> pd.DataFrame:
 
 def marginal_contribution(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Compare average model performance WITH vs WITHOUT each feature.
+    Measures the impact of each feature on model performance by comparing
+    the average performance (ROC-AUC and F1) of models that includes a given
+    features versus those that do not
+    
+    A larger positive difference indicates that the feature significantly improves
+    model performance, while small or negative differences suggest limited usefullness
     """
     rows = []
 
     for feature in BASE_FEATURES:
+        # split dataset into madels that include vs exclude feature
         with_feature = df[df[f"has_{feature}"]]
         without_feature = df[~df[f"has_{feature}"]]
 
+        # compute average performance for both
         row = {
             "feature": feature,
             "with_count": len(with_feature),
@@ -149,13 +174,18 @@ def marginal_contribution(df: pd.DataFrame) -> pd.DataFrame:
 
 def best_by_feature_count(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Show the best model for each feature count.
+    Determines how model performance changes as the number of features increases.
+    Groups models by number of features and records the best-performing models
+    in each group
+    
+    Helps identify the optimal level of model complexity by showing whether 
+    adding more features leads to meaningful improvements
     """
     rows = []
 
     for num in sorted(df["num_features"].unique()):
-        subset = df[df["num_features"] == num]
-        best_row = subset.sort_values([PRIMARY_METRIC, "f1"], ascending=[False, False]).iloc[0]
+        subset = df[df["num_features"] == num]  # all models with this num features
+        best_row = subset.sort_values([PRIMARY_METRIC, "f1"], ascending=[False, False]).iloc[0]     # select best performers
 
         rows.append({
             "num_features": num,
@@ -186,12 +216,14 @@ def model_comparison(df: pd.DataFrame) -> pd.DataFrame:
     """
     Compare Logistic vs Random Forest on the same feature sets.
     """
+    # reshape data so each feature set has both model scores side-by-side
     pivot = df.pivot_table(
         index="features",
         columns="model",
         values=PRIMARY_METRIC
     ).dropna()
 
+    # computer difference in performance
     pivot["rf_minus_log"] = pivot["Random Forest"] - pivot["Logistic Regression"]
 
     print("\n=== LOGISTIC VS RANDOM FOREST ===")
@@ -212,42 +244,12 @@ def model_comparison(df: pd.DataFrame) -> pd.DataFrame:
 
     return pivot
 
-def redundancy_checks(df: pd.DataFrame) -> None:
-    """
-    Compare a few specific subsets to reason about redundancy among off/def/net.
-    """
-    print("\n=== REDUNDANCY CHECKS ===")
-
-    checks = [
-        ["netRatingDiff"],
-        ["offRatingDiff", "defRatingDiff"],
-        ["netRatingDiff", "offRatingDiff"],
-        ["netRatingDiff", "defRatingDiff"],
-        ["offRatingDiff", "defRatingDiff", "netRatingDiff"],
-    ]
-
-    df = df.copy()
-    df["features_sorted_string"] = df["feature_list"].apply(lambda feats: ",".join(sorted(feats)))
-
-    for feature_set in checks:
-        key = ",".join(sorted(feature_set))
-        subset = df[df["features_sorted_string"] == key]
-
-        if subset.empty:
-            print(f"{key}: not present")
-            continue
-
-        best = subset.sort_values([PRIMARY_METRIC, "f1"], ascending=[False, False]).iloc[0]
-        print(
-            f"{key:<45} "
-            f"best model={best['model']:<20} "
-            f"roc_auc={best['roc_auc']:.4f} "
-            f"f1={best['f1']:.4f}"
-        )
-
 def stability_analysis(top_tier: pd.DataFrame) -> None:
     """
-    Look at how similar the top-tier models are.
+    Assesses the consisitency of feature importance across top models
+    
+    Consistent patterns across top models indicate reliable feature importance,
+    while high variability suggests weaker or interchangeable features
     """
     print("\n=== STABILITY ANALYSIS ===")
 
@@ -266,46 +268,19 @@ def stability_analysis(top_tier: pd.DataFrame) -> None:
     print(top_tier["model"].value_counts().to_string())
 
     print("\nTop-tier feature-count distribution:")
-    print(top_tier["num_features"].value_counts().sort_index().to_string())
-  
-def export_top_tier(top_tier: pd.DataFrame, out_file: str = "reports/top_tier_models.csv") -> None:
-    """
-    Save the top-tier models for easy review in Excel.
-    """
-    cols = ["model", "features", "num_features", "roc_auc", "f1", "accuracy", "precision", "recall"]
-    top_tier[cols].to_csv(out_file, index=False)
-    print(f"\nSaved top-tier models to {out_file}")  
+    print(top_tier["num_features"].value_counts().sort_index().to_string()) 
     
-    
-def find_rf_better(df):
-    pivot = df.pivot_table(
-        index = "features",
-        columns = "model", 
-        values = "roc_auc"
-    ).dropna()
-    
-    pivot["roc_auc_diff"] = pivot["Random Forest"] - pivot["Logistic Regression"]
-    
-    rf_better = pivot[pivot["roc_auc_diff"] > 0]
-    
-    print("\nFeature sets where Random Forest outperforms Logistic:\n")
-    print(rf_better.sort_values("roc_auc_diff", ascending=False).head(10))
-    
-    return rf_better
-
 def main():
     df = load_data()
 
     print_top_models(df, n=20)
 
     top_tier = get_top_tier(df)
-    export_top_tier(top_tier)
 
     feature_frequency_top_tier(top_tier)
     marginal_contribution(df)
     best_by_feature_count(df)
     model_comparison(df)
-    redundancy_checks(df)
     stability_analysis(top_tier)
 
 

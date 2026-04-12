@@ -2,6 +2,13 @@
 NBA Game Predictor — Terminal Interface
 Run: python predict.py
 
+Provides and interactive interface for predicting NBA game outcomes (single game or full season)
+using the trained models. 
+    - Allows users to select model (Logistic Regression or Random Forest)
+    - Generates feature values for a given game
+    - Computes win probabilities using the selected model
+    - Displays predictions (both options) and visualizations (full season)
+    
 Options:
   1. Predict a single game (pick 2 teams + date)
   2. Predict a full season for a team (pick team + season year)
@@ -59,28 +66,6 @@ def pick_team(prompt, exclude_id=None):
             pass
         print("  Invalid — try again.")
 
-
-"""
-def predict_game_prob(home_id, away_id, game_date):
-    h = get_rolling_stats(stats, home_id, game_date)
-    a = get_rolling_stats(stats, away_id, game_date)
-    if h is None or a is None:
-        return None
-    home_rest = get_rest(stats, home_id, game_date)
-    away_rest = get_rest(stats, away_id, game_date)
-    features = np.array([[
-        h["roll_offRating"] - a["roll_offRating"],
-        h["roll_defRating"] - a["roll_defRating"],
-        h["roll_netRating"] - a["roll_netRating"],
-        home_rest - away_rest,
-        (1 if home_rest < 1.5 else 0) - (1 if away_rest < 1.5 else 0),
-    ]])
-    
-    if curr_scaler is not None:
-        features = curr_scaler.transform(features)
-    
-    return curr_model.predict_proba(features)[0, 1]
-"""
 def predict_game_prob(home_id, away_id, game_date):
     h = get_rolling_stats(stats, home_id, game_date)
     a = get_rolling_stats(stats, away_id, game_date)
@@ -111,9 +96,10 @@ def predict_game_prob(home_id, away_id, game_date):
 
     return curr_model.predict_proba(features)[0, 1]
 
-# switch between using logisitic regression prediciton
-# or random forest prediction
 def choose_model():
+    """ 
+    Have user choose which model to use
+    """
     global curr_model, curr_scaler, curr_model_name
     print("\nSelect predicition model:")
     print("    1. Logistic Regresion")
@@ -352,7 +338,6 @@ def mode_season():
     )
 
 def main():
-    # allow users to use logistic regression or rf model
     choose_model()
 
     # Main loop

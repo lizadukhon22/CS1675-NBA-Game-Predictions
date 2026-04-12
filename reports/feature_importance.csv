@@ -5119,3 +5119,43 @@ timestamp,model,features,notes,feature,importance
 2026-04-11 20:24:14,Random Forest,"absNetRatingDiff,b2bDiff,closeGame,close_b2b,defRatingDiff,netRatingDiff,netRating_b2b,netRating_rest,offRatingDiff,restDiff",all combinations,closeGame,0.020327031499199164
 2026-04-11 20:24:14,Random Forest,"absNetRatingDiff,b2bDiff,closeGame,close_b2b,defRatingDiff,netRatingDiff,netRating_b2b,netRating_rest,offRatingDiff,restDiff",all combinations,b2bDiff,0.00977296940123842
 2026-04-11 20:24:14,Random Forest,"absNetRatingDiff,b2bDiff,closeGame,close_b2b,defRatingDiff,netRatingDiff,netRating_b2b,netRating_rest,offRatingDiff,restDiff",all combinations,close_b2b,0.0035136477211045046
+2026-04-11 23:40:11,Random Forest,"b2bDiff,defRatingDiff,netRatingDiff,offRatingDiff,restDiff",,netRatingDiff,0.4783261821346368
+2026-04-11 23:40:11,Random Forest,"b2bDiff,defRatingDiff,netRatingDiff,offRatingDiff,restDiff",,offRatingDiff,0.24662929089128263
+2026-04-11 23:40:11,Random Forest,"b2bDiff,defRatingDiff,netRatingDiff,offRatingDiff,restDiff",,defRatingDiff,0.17879795997937117
+2026-04-11 23:40:11,Random Forest,"b2bDiff,defRatingDiff,netRatingDiff,offRatingDiff,restDiff",,restDiff,0.07955424627326048
+2026-04-11 23:40:11,Random Forest,"b2bDiff,defRatingDiff,netRatingDiff,offRatingDiff,restDiff",,b2bDiff,0.016692320721448925
+2026-04-11 23:41:27,Random Forest,"b2bDiff,defRatingDiff,netRatingDiff,offRatingDiff,restDiff",,netRatingDiff,0.4783261821346368
+2026-04-11 23:41:27,Random Forest,"b2bDiff,defRatingDiff,netRatingDiff,offRatingDiff,restDiff",,offRatingDiff,0.24662929089128263
+2026-04-11 23:41:27,Random Forest,"b2bDiff,defRatingDiff,netRatingDiff,offRatingDiff,restDiff",,defRatingDiff,0.17879795997937117
+2026-04-11 23:41:27,Random Forest,"b2bDiff,defRatingDiff,netRatingDiff,offRatingDiff,restDiff",,restDiff,0.07955424627326048
+2026-04-11 23:41:27,Random Forest,"b2bDiff,defRatingDiff,netRatingDiff,offRatingDiff,restDiff",,b2bDiff,0.016692320721448925
+2026-04-11 23:41:51,Random Forest,"b2bDiff,defRatingDiff,netRatingDiff,offRatingDiff,restDiff",,netRatingDiff,0.4783261821346368
+2026-04-11 23:41:51,Random Forest,"b2bDiff,defRatingDiff,netRatingDiff,offRatingDiff,restDiff",,offRatingDiff,0.24662929089128263
+2026-04-11 23:41:51,Random Forest,"b2bDiff,defRatingDiff,netRatingDiff,offRatingDiff,restDiff",,defRatingDiff,0.17879795997937117
+2026-04-11 23:41:51,Random Forest,"b2bDiff,defRatingDiff,netRatingDiff,offRatingDiff,restDiff",,restDiff,0.07955424627326048
+2026-04-11 23:41:51,Random Forest,"b2bDiff,defRatingDiff,netRatingDiff,offRatingDiff,restDiff",,b2bDiff,0.016692320721448925
+2026-04-11 23:42:41,Random Forest,"b2bDiff,defRatingDiff,netRatingDiff,offRatingDiff,restDiff",,netRatingDiff,0.4783261821346368
+2026-04-11 23:42:41,Random Forest,"b2bDiff,defRatingDiff,netRatingDiff,offRatingDiff,restDiff",,offRatingDiff,0.24662929089128263
+2026-04-11 23:42:41,Random Forest,"b2bDiff,defRatingDiff,netRatingDiff,offRatingDiff,restDiff",,defRatingDiff,0.17879795997937117
+2026-04-11 23:42:41,Random Forest,"b2bDiff,defRatingDiff,netRatingDiff,offRatingDiff,restDiff",,restDiff,0.07955424627326048
+2026-04-11 23:42:41,Random Forest,"b2bDiff,defRatingDiff,netRatingDiff,offRatingDiff,restDiff",,b2bDiff,0.016692320721448925
+2026-04-11 23:43:14,Random Forest,"b2bDiff,defRatingDiff,netRatingDiff,offRatingDiff,restDiff",,netRatingDiff,0.4783261821346368
+2026-04-11 23:43:14,Random Forest,"b2bDiff,defRatingDiff,netRatingDiff,offRatingDiff,restDiff",,offRatingDiff,0.24662929089128263
+2026-04-11 23:43:14,Random Forest,"b2bDiff,defRatingDiff,netRatingDiff,offRatingDiff,restDiff",,defRatingDiff,0.17879795997937117
+2026-04-11 23:43:14,Random Forest,"b2bDiff,defRatingDiff,netRatingDiff,offRatingDiff,restDiff",,restDiff,0.07955424627326048
+2026-04-11 23:43:14,Random Forest,"b2bDiff,defRatingDiff,netRatingDiff,offRatingDiff,restDiff",,b2bDiff,0.016692320721448925
+2026-04-11 23:43:38,Random Forest,"b2bDiff,defRatingDiff,netRatingDiff,offRatingDiff,restDiff",,netRatingDiff,0.4783261821346368
+2026-04-11 23:43:38,Random Forest,"b2bDiff,defRatingDiff,netRatingDiff,offRatingDiff,restDiff",,offRatingDiff,0.24662929089128263
+2026-04-11 23:43:38,Random Forest,"b2bDiff,defRatingDiff,netRatingDiff,offRatingDiff,restDiff",,defRatingDiff,0.17879795997937117
+2026-04-11 23:43:38,Random Forest,"b2bDiff,defRatingDiff,netRatingDiff,offRatingDiff,restDiff",,restDiff,0.07955424627326048
+2026-04-11 23:43:38,Random Forest,"b2bDiff,defRatingDiff,netRatingDiff,offRatingDiff,restDiff",,b2bDiff,0.016692320721448925
+2026-04-11 23:44:19,Random Forest,"b2bDiff,defRatingDiff,netRatingDiff,offRatingDiff,restDiff",,netRatingDiff,0.4783261821346368
+2026-04-11 23:44:19,Random Forest,"b2bDiff,defRatingDiff,netRatingDiff,offRatingDiff,restDiff",,offRatingDiff,0.24662929089128263
+2026-04-11 23:44:19,Random Forest,"b2bDiff,defRatingDiff,netRatingDiff,offRatingDiff,restDiff",,defRatingDiff,0.17879795997937117
+2026-04-11 23:44:19,Random Forest,"b2bDiff,defRatingDiff,netRatingDiff,offRatingDiff,restDiff",,restDiff,0.07955424627326048
+2026-04-11 23:44:19,Random Forest,"b2bDiff,defRatingDiff,netRatingDiff,offRatingDiff,restDiff",,b2bDiff,0.016692320721448925
+2026-04-11 23:55:35,Random Forest,"b2bDiff,closeGame,netRatingDiff",,netRatingDiff,0.9502844198710285
+2026-04-11 23:55:35,Random Forest,"b2bDiff,closeGame,netRatingDiff",,closeGame,0.029352871685799857
+2026-04-11 23:55:35,Random Forest,"b2bDiff,closeGame,netRatingDiff",,b2bDiff,0.02036270844317153
+2026-04-11 23:56:47,Random Forest,"b2bDiff,netRatingDiff",,netRatingDiff,0.9802672373106057
+2026-04-11 23:56:47,Random Forest,"b2bDiff,netRatingDiff",,b2bDiff,0.01973276268939423

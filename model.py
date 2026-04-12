@@ -1,3 +1,12 @@
+""" 
+File: model.py
+
+Handles model training, feature selection, and data preparation for NBA game predictions.
+    - Defines training feature sets
+    - Converts data into feature matrices
+    - Train Logisitic Regression and Random Forest models
+    - Return trained models and scalers
+"""
 import pandas as pd
 import numpy as np
 from sklearn.linear_model import LogisticRegression
