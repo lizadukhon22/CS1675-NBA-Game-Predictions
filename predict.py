@@ -1,6 +1,6 @@
 """
 NBA Game Predictor — Terminal Interface
-Run: python predict_game.py
+Run: python predict.py
 
 Options:
   1. Predict a single game (pick 2 teams + date)
@@ -14,6 +14,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
+import model
 from model import (
     load_data,
     build_team_name_map,
@@ -59,7 +60,7 @@ def pick_team(prompt, exclude_id=None):
         print("  Invalid — try again.")
 
 
-
+"""
 def predict_game_prob(home_id, away_id, game_date):
     h = get_rolling_stats(stats, home_id, game_date)
     a = get_rolling_stats(stats, away_id, game_date)
@@ -78,6 +79,36 @@ def predict_game_prob(home_id, away_id, game_date):
     if curr_scaler is not None:
         features = curr_scaler.transform(features)
     
+    return curr_model.predict_proba(features)[0, 1]
+"""
+def predict_game_prob(home_id, away_id, game_date):
+    h = get_rolling_stats(stats, home_id, game_date)
+    a = get_rolling_stats(stats, away_id, game_date)
+    if h is None or a is None:
+        return None
+
+    home_rest = get_rest(stats, home_id, game_date)
+    away_rest = get_rest(stats, away_id, game_date)
+
+    feature_map = {
+        "offRatingDiff": h["roll_offRating"] - a["roll_offRating"],
+        "defRatingDiff": h["roll_defRating"] - a["roll_defRating"],
+        "netRatingDiff": h["roll_netRating"] - a["roll_netRating"],
+        "restDiff": home_rest - away_rest,
+        "b2bDiff": (1 if home_rest < 1.5 else 0) - (1 if away_rest < 1.5 else 0),
+    }
+
+    feature_map["absNetRatingDiff"] = abs(feature_map["netRatingDiff"])
+    feature_map["closeGame"] = int(feature_map["absNetRatingDiff"] < 5)
+    feature_map["netRating_b2b"] = feature_map["netRatingDiff"] * feature_map["b2bDiff"]
+    feature_map["netRating_rest"] = feature_map["netRatingDiff"] * feature_map["restDiff"]
+    feature_map["close_b2b"] = feature_map["closeGame"] * feature_map["b2bDiff"]
+
+    features = np.array([[feature_map[f] for f in model.FEATURES]])
+
+    if curr_scaler is not None:
+        features = curr_scaler.transform(features)
+
     return curr_model.predict_proba(features)[0, 1]
 
 # switch between using logisitic regression prediciton
@@ -116,14 +147,16 @@ def plot_game_by_game_predictions(game_dates, probs, actual_results, team_name, 
     - team_name: string
     - season_label: string
     """
-
-    plt.figure()
+    predictions = [1 if p >= 0.5 else 0 for p in probs]
+    
+    plt.figure(figsize=(12,8))
 
     # Model predicted probability line
     plt.plot(game_dates, probs, label="Predicted Win Probability")
+    plt.scatter(game_dates, predictions, marker='x',label="Predicted Result")
 
     # Actual results (0 or 1)
-    plt.plot(game_dates, actual_results, linestyle='--', marker='o', label="Actual Result (1=Win, 0=Loss)")
+    plt.scatter(game_dates, actual_results, marker='o', label="Actual Result (1=Win, 0=Loss)")
 
     plt.title(f"{team_name} {season_label}\nGame-by-Game Predictions vs Actual Results")
     plt.xlabel("Game Date")
@@ -131,6 +164,7 @@ def plot_game_by_game_predictions(game_dates, probs, actual_results, team_name, 
 
     plt.legend()
     plt.xticks(rotation=45)
+    plt.grid(True, which='both', linestyle='--', alpha=0.2)
     plt.tight_layout()
     plt.show()
 

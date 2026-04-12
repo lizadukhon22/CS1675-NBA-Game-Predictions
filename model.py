@@ -6,7 +6,10 @@ from sklearn.preprocessing import StandardScaler
 
 # WINDOW is how many past games to use for rolling averages (with min_periods=3)
 WINDOW = 10
-FEATURES = ["offRatingDiff", "defRatingDiff", "netRatingDiff", "restDiff", "b2bDiff"]
+FEATURES = ["netRatingDiff",
+            "b2bDiff",
+            "closeGame",
+            "netRating_b2b"]
 
 def load_data():
     """
@@ -77,7 +80,14 @@ def load_data():
     df["netRatingDiff"] = df["home_netRtg"] - df["away_netRtg"]
     df["restDiff"]      = df["home_rest"]   - df["away_rest"]
     df["b2bDiff"]       = df["home_b2b"]   - df["away_b2b"]
-
+    
+    #interaction features
+    df["netRating_b2b"] = df["netRatingDiff"] * df["b2bDiff"]
+    df["netRating_rest"] = df["netRatingDiff"] * df["restDiff"]
+    df["absNetRatingDiff"] = df["netRatingDiff"].abs()
+    df["closeGame"] = (df["absNetRatingDiff"] < 5).astype(int)
+    df["close_b2b"] = df["closeGame"] * df["b2bDiff"]
+    
     # Remove rows with missing values in the selected feature columns. This ensures clean input for model training
     df.dropna(subset=FEATURES, inplace=True)    
     

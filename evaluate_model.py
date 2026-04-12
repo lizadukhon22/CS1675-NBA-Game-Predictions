@@ -21,11 +21,20 @@ from model import (
     train_random_forest_model
 )
 
-ALL_FEATURES = ["offRatingDiff", "defRatingDiff", "netRatingDiff", "restDiff", "b2bDiff"] # baseline
+ALL_FEATURES = ["offRatingDiff", 
+            "defRatingDiff", 
+            "netRatingDiff", 
+            "restDiff", 
+            "b2bDiff", 
+            "netRating_b2b", 
+            "netRating_rest",
+            "absNetRatingDiff",
+            "closeGame",
+            "close_b2b"] # baseline
 TRAINING_FEATURES = None # set to None if you want to evaluate all combos, manual for specific features
-EXPERIMENT_NOTES = "net & rest only" # change for each evaluation 
-RESULTS_FILE = "evaluation_results.csv"
-IMPORTANCE_FILE = "feature_importance.csv"
+EXPERIMENT_NOTES = "" # change for manual evaluations
+RESULTS_FILE = "reports/evaluation_results.csv"
+IMPORTANCE_FILE = "reports/feature_importance.csv"
 
 
 def calculate_metrics(y_true, y_pred, y_prob):
