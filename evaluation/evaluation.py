@@ -9,8 +9,10 @@ Provides reusable functions for evaluating NBA prediction models.
     
 """
 import os
+import sys
 
 from datetime import datetime
+from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -25,6 +27,11 @@ from sklearn.metrics import (
     roc_curve
 )
 
+ROOT_DIR = Path(__file__).resolve().parents[1]
+REPORTS_DIR = ROOT_DIR / "reports"
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+
 from model import (
     load_data, 
     get_feature_matrix,
@@ -34,10 +41,10 @@ from model import (
     train_soft_voting_ensemble,
 )
 
-RESULTS_FILE = "reports/evaluation_results.csv"
-IMPORTANCE_FILE = "reports/feature_importance.csv"
-UPGRADED_RESULTS_FILE = "reports/upgraded_evaluation_results.csv"
-EXPANDED_IMPORTANCE_FILE = "reports/expanded_feature_importance.csv"
+RESULTS_FILE = REPORTS_DIR / "evaluation_results.csv"
+IMPORTANCE_FILE = REPORTS_DIR / "feature_importance.csv"
+UPGRADED_RESULTS_FILE = REPORTS_DIR / "upgraded_evaluation_results.csv"
+EXPANDED_IMPORTANCE_FILE = REPORTS_DIR / "expanded_feature_importance.csv"
 
 def load_eval_data(split_ratio=0.8):
     game, stats, df = load_data()  
@@ -72,6 +79,7 @@ def save_rows_to_csv(rows, file_path):
     Append rows to a CSV file. Create the file with headers if it does not exist.
     """
     df_rows = pd.DataFrame(rows)
+    Path(file_path).parent.mkdir(parents=True, exist_ok=True)
 
     if os.path.exists(file_path):
         df_rows.to_csv(file_path, mode="a", header=False, index=False)

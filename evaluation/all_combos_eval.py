@@ -9,11 +9,17 @@ Runs exhaustive evaluation across all possible feature combinations.
 """
 
 import os
+import sys
 from itertools import combinations
+from pathlib import Path
 
 import pandas as pd
 
-from evaluation import (
+ROOT_DIR = Path(__file__).resolve().parents[1]
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+
+from evaluation.evaluation import (
     load_eval_data,
     evaluate_feature_set,
     save_rows_to_csv,

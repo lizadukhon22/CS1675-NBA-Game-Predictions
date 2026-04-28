@@ -12,8 +12,10 @@ Analyzes evaluation results to determine feature importance and optimal model co
 import pandas as pd
 import matplotlib.pyplot as plt
 from collections import Counter
+from pathlib import Path
 
-RESULTS_FILE = "reports/evaluation_results.csv"
+ROOT_DIR = Path(__file__).resolve().parents[1]
+RESULTS_FILE = ROOT_DIR / "reports" / "evaluation_results.csv"
 PRIMARY_METRIC = "roc_auc"
 MODEL_NAMES = ["Logistic Regression", "Random Forest"]
 TOP_TIER_DELTA = 0.002

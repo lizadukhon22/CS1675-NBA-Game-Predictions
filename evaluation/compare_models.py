@@ -4,9 +4,16 @@ File: compare_models.py
 Compares compact and expanded feature sets across all supported models.
 """
 
+import sys
+from pathlib import Path
+
 import pandas as pd
 
-from evaluation import (
+ROOT_DIR = Path(__file__).resolve().parents[1]
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+
+from evaluation.evaluation import (
     EXPANDED_IMPORTANCE_FILE,
     UPGRADED_RESULTS_FILE,
     evaluate_feature_set,

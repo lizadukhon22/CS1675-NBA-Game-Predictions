@@ -9,22 +9,30 @@ Analyzes the clean upgraded model comparison outputs:
     - Feature-group importance
 """
 
+import sys
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from evaluation import EXPANDED_IMPORTANCE_FILE, UPGRADED_RESULTS_FILE
+ROOT_DIR = Path(__file__).resolve().parents[1]
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+
+from evaluation.evaluation import EXPANDED_IMPORTANCE_FILE, UPGRADED_RESULTS_FILE
 
 METRICS = ["roc_auc", "f1", "accuracy", "precision", "recall"]
 BASE_NOTE = "Base features"
 EXPANDED_NOTE = "Expanded rolling features"
 TREE_MODELS = ["Random Forest", "XGBoost"]
+FEATURE_SELECTION_RESULTS_FILE = ROOT_DIR / "reports" / "feature_selection_results.csv"
 
 
 def show_plot():
     plt.tight_layout()
-    plt.show()
+    plt.show(block=False)
+    plt.pause(0.1)
+    plt.close()
 
 
 def require_report_files():
@@ -199,6 +207,91 @@ def feature_group_importance(importance):
     return group_df
 
 
+def load_feature_selection_results():
+    if not Path(FEATURE_SELECTION_RESULTS_FILE).exists():
+        print("\nFeature selection results not found.")
+        print("Run this to create them:")
+        print("  python feature_selection.py")
+        return None
+
+    return pd.read_csv(FEATURE_SELECTION_RESULTS_FILE)
+
+
+def feature_selection_summary(selection_results):
+    if selection_results is None or selection_results.empty:
+        return
+
+    model_rows = selection_results[
+        selection_results["model"].isin(["Logistic Regression", "Random Forest", "XGBoost", "Soft Voting Ensemble"])
+    ].copy()
+    ranked_rows = model_rows[model_rows["selection_type"] == "ranked_subset"].copy()
+    if model_rows.empty:
+        return
+
+    best_auc = model_rows["roc_auc"].max()
+    best_by_auc = model_rows.sort_values(["roc_auc", "f1"], ascending=[False, False]).iloc[0]
+    best_by_f1 = model_rows.sort_values(["f1", "roc_auc"], ascending=[False, False]).iloc[0]
+    smallest_near_best = (
+        model_rows[model_rows["roc_auc"] >= best_auc - 0.002]
+        .sort_values(["num_features", "roc_auc"], ascending=[True, False])
+        .iloc[0]
+    )
+
+    print("\n=== FEATURE SELECTION SUMMARY ===")
+    print("\nBest subset by ROC-AUC:")
+    print(best_by_auc[["subset_name", "model", "num_features", "roc_auc", "f1", "accuracy"]].to_string())
+
+    print("\nBest subset by F1:")
+    print(best_by_f1[["subset_name", "model", "num_features", "roc_auc", "f1", "accuracy"]].to_string())
+
+    print("\nSmallest subset within 0.002 ROC-AUC of best:")
+    print(
+        smallest_near_best[
+            ["selection_type", "subset_name", "model", "num_features", "roc_auc", "f1", "accuracy"]
+        ].to_string()
+    )
+
+    print("\nTop feature-selection results:")
+    print(
+        model_rows.sort_values(["roc_auc", "f1"], ascending=[False, False])
+        .head(12)[["selection_type", "subset_name", "model", "num_features", "roc_auc", "f1", "accuracy"]]
+        .to_string(index=False, float_format=lambda x: f"{x:.4f}")
+    )
+
+    if not ranked_rows.empty:
+        plot_feature_selection_metric(ranked_rows, "roc_auc")
+        plot_feature_selection_metric(ranked_rows, "f1")
+    print_top_selected_features(smallest_near_best)
+
+
+def plot_feature_selection_metric(ranked_rows, metric):
+    pivot = ranked_rows.pivot_table(
+        index="num_features",
+        columns="model",
+        values=metric,
+        aggfunc="max",
+    ).sort_index()
+
+    pivot.plot(marker="o", figsize=(9, 5))
+    plt.xlabel("Number of Features")
+    plt.ylabel(metric.upper())
+    plt.title(f"Feature Count vs {metric.upper()}")
+    show_plot()
+
+
+def print_top_selected_features(row):
+    features = [feature for feature in str(row["selected_features"]).split(",") if feature]
+    print("\nRecommended selected features:")
+    for feature in features:
+        print(f"  {feature}")
+
+    plt.figure(figsize=(8, max(3, len(features) * 0.28)))
+    plt.barh(features[::-1], list(range(len(features), 0, -1))[::-1])
+    plt.xlabel("Rank Position")
+    plt.title("Recommended Feature Subset")
+    show_plot()
+
+
 def main():
     if not require_report_files():
         return
@@ -214,6 +307,7 @@ def main():
 
     combined_feature_importance(importance)
     feature_group_importance(importance)
+    feature_selection_summary(load_feature_selection_results())
 
 
 if __name__ == "__main__":
