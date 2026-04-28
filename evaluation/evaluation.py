@@ -41,10 +41,8 @@ from model import (
     train_soft_voting_ensemble,
 )
 
-RESULTS_FILE = REPORTS_DIR / "evaluation_results.csv"
+RESULTS_FILE = REPORTS_DIR / "evaluation_results.csv" 
 IMPORTANCE_FILE = REPORTS_DIR / "feature_importance.csv"
-UPGRADED_RESULTS_FILE = REPORTS_DIR / "upgraded_evaluation_results.csv"
-EXPANDED_IMPORTANCE_FILE = REPORTS_DIR / "expanded_feature_importance.csv"
 
 def load_eval_data(split_ratio=0.8):
     game, stats, df = load_data()  
@@ -321,8 +319,7 @@ def plot_results_table(result_rows):
             cell.set_text_props(weight="bold")
 
     plt.tight_layout()
-    plt.show(block=False)
-    plt.pause(0.1)
+    plt.show()
     
 def plot_roc_curve(model, X_test, y_test, model_name="Model", ax = None):
     """

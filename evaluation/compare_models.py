@@ -1,7 +1,8 @@
 """
 File: compare_models.py
 
-Compares compact and expanded feature sets across all supported models.
+Compares original model, current features, and expanded features against eachother
+Saves evaluation metrics to csv files
 """
 
 import sys
@@ -14,21 +15,23 @@ if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
 from evaluation.evaluation import (
-    EXPANDED_IMPORTANCE_FILE,
-    UPGRADED_RESULTS_FILE,
+    IMPORTANCE_FILE,
+    RESULTS_FILE,
     evaluate_feature_set,
     load_eval_data,
     plot_results_table,
 )
-from model import BASE_FEATURES, EXPANDED_FEATURES
+from model import BASE_FEATURES, EXPANDED_FEATURES, FEATURES
 
 FEATURE_SETS = [
     ("Base features", BASE_FEATURES),
+    ("Current features", FEATURES),
     ("Expanded rolling features", EXPANDED_FEATURES),
 ]
 
 
 def main():
+    # load data
     train_df, test_df = load_eval_data()
 
     all_rows = []
@@ -44,13 +47,15 @@ def main():
         )
 
         all_rows.extend(rows)
+        
+        # get feature importance for expanded feature set
         if feature_set == EXPANDED_FEATURES:
             expanded_importance_rows.extend(importance_rows)
 
     if expanded_importance_rows:
-        pd.DataFrame(expanded_importance_rows).to_csv(EXPANDED_IMPORTANCE_FILE, index=False)
+        pd.DataFrame(expanded_importance_rows).to_csv(IMPORTANCE_FILE, index=False)
 
-    pd.DataFrame(all_rows).to_csv(UPGRADED_RESULTS_FILE, index=False)
+    pd.DataFrame(all_rows).to_csv(RESULTS_FILE, index=False)
 
     plot_results_table(all_rows)
 
