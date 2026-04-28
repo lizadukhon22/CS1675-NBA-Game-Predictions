@@ -7,6 +7,8 @@ Handles model training, feature selection, and data preparation for NBA game pre
     - Train Logistic Regression, Random Forest, XGBoost, and ensemble models
     - Return trained models and scalers
 """
+from pathlib import Path
+
 import pandas as pd
 import numpy as np
 from sklearn.linear_model import LogisticRegression
@@ -14,14 +16,18 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import StandardScaler
 from xgboost import XGBClassifier
 
+ROOT_DIR = Path(__file__).resolve().parent
+DATA_DIR = ROOT_DIR / "data"
+
 # WINDOW is how many past games to use for rolling averages (with min_periods=3)
 WINDOW = 10
 BASE_FEATURES = [
     "netRatingDiff",
     "b2bDiff",
     "closeGame",
-    "netRating_b2b",
+    "netRating_b2b"
 ]
+
 
 ROLLING_FEATURES = {
     "offRating": "offRatingDiff",
@@ -45,33 +51,21 @@ ROLLING_FEATURES = {
 }
 
 ADDITIONAL_FEATURES = [
-    "offRatingDiff",
-    "defRatingDiff",
-    "restDiff",
-    "netRating_rest",
+    "netRatingDiff",
+    "seasonWinPctDiff",
     "absNetRatingDiff",
-    "absRating_b2b",
-    "close_b2b",
+    "defRatingDiff",
     "fieldGoalPctDiff",
-    "threePointPctDiff",
-    "freeThrowPctDiff",
-    "reboundsTotalDiff",
-    "offensiveReboundsDiff",
-    "defensiveReboundsDiff",
+    "benchPointsDiff",
     "turnoversDiff",
     "assistsDiff",
-    "stealsDiff",
-    "blocksDiff",
-    "benchPointsDiff",
-    "fastBreakPointsDiff",
-    "paintPointsDiff",
-    "secondChancePointsDiff",
-    "seasonWinPctDiff",
+    "freeThrowPctDiff"
 ]
 
-EXPANDED_FEATURES = BASE_FEATURES + [
-    feature for feature in ADDITIONAL_FEATURES if feature not in BASE_FEATURES
-]
+EXPANDED_FEATURES = ADDITIONAL_FEATURES 
+#BASE_FEATURES + [
+#    feature for feature in ADDITIONAL_FEATURES if feature not in BASE_FEATURES
+#]
 FEATURES = EXPANDED_FEATURES
 
 def load_data():
@@ -81,8 +75,8 @@ def load_data():
     returns prepared game-level dataframe used for modeling
     """
     
-    games = pd.read_csv("data/Games.csv", low_memory=False)
-    stats = pd.read_csv("data/TeamStatistics.csv", low_memory=False)
+    games = pd.read_csv(DATA_DIR / "Games.csv", low_memory=False)
+    stats = pd.read_csv(DATA_DIR / "TeamStatistics.csv", low_memory=False)
 
     games["gameDateTimeEst"] = pd.to_datetime(games["gameDateTimeEst"])
     stats["gameDateTimeEst"] = pd.to_datetime(stats["gameDateTimeEst"])
