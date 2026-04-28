@@ -4,7 +4,7 @@ File: evaluation.py
 Provides reusable functions for evaluating NBA prediction models.
     - Compute evaluation metrics
     - Generate baseline results
-    - Evaluate Logistic Regression and Random Forest on a feature set
+    - Evaluate Logistic Regression, Random Forest, XGBoost, and ensemble models
     - Build tables and CSV-ready result rows
     
 """
@@ -21,23 +21,28 @@ from sklearn.metrics import (
     recall_score,
     f1_score,
     roc_auc_score,
-    confusion_matrix
+    confusion_matrix,
+    roc_curve
 )
 
 from model import (
     load_data, 
     get_feature_matrix,
     train_logistic_model,
-    train_random_forest_model
+    train_random_forest_model,
+    train_xgboost_model,
+    train_soft_voting_ensemble,
 )
 
 RESULTS_FILE = "reports/evaluation_results.csv"
 IMPORTANCE_FILE = "reports/feature_importance.csv"
+UPGRADED_RESULTS_FILE = "reports/upgraded_evaluation_results.csv"
+EXPANDED_IMPORTANCE_FILE = "reports/expanded_feature_importance.csv"
 
 def load_eval_data(split_ratio=0.8):
     game, stats, df = load_data()  
 
-    split_idx = int(len(df) * 0.8)
+    split_idx = int(len(df) * split_ratio)
     train_df = df.iloc[:split_idx].copy()
     test_df = df.iloc[split_idx:].copy()
     
@@ -132,11 +137,14 @@ def build_evaluation_rows(y_train, y_test, model_outputs, training_features=None
 
     return rows
 
-def build_feature_importance_rows(rf_model, training_features, notes=""):
+def build_feature_importance_rows(fitted_model, model_name, training_features, notes=""):
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     feature_string = ",".join(training_features)
 
-    importances = rf_model.feature_importances_
+    if not hasattr(fitted_model, "feature_importances_"):
+        return []
+
+    importances = fitted_model.feature_importances_
     importance_rows = []
 
     for feature, importance in sorted(
@@ -146,7 +154,7 @@ def build_feature_importance_rows(rf_model, training_features, notes=""):
     ):
         importance_rows.append({
             "timestamp": timestamp,
-            "model": "Random Forest",
+            "model": model_name,
             "features": feature_string,
             "notes": notes,
             "feature": feature,
@@ -177,9 +185,21 @@ def evaluate_feature_set(train_df, test_df, training_features, notes ="", includ
     rf_pred = rf_model.predict(X_test)
     rf_prob = rf_model.predict_proba(X_test)[:, 1]
 
+    # Train XGBoost
+    xgb_model = train_xgboost_model(X_train, y_train)
+    xgb_pred = xgb_model.predict(X_test)
+    xgb_prob = xgb_model.predict_proba(X_test)[:, 1]
+
+    # Train soft voting ensemble from the fitted base models
+    ensemble_model = train_soft_voting_ensemble(log_model, log_scaler, rf_model, xgb_model)
+    ensemble_pred = ensemble_model.predict(X_test)
+    ensemble_prob = ensemble_model.predict_proba(X_test)[:, 1]
+
     model_outputs = [
         ("Logistic Regression", log_pred, log_prob),
         ("Random Forest", rf_pred, rf_prob),
+        ("XGBoost", xgb_pred, xgb_prob),
+        ("Soft Voting Ensemble", ensemble_pred, ensemble_prob),
     ]
 
     evaluation_rows = build_evaluation_rows(
@@ -198,11 +218,19 @@ def evaluate_feature_set(train_df, test_df, training_features, notes ="", includ
         row["test_size"] = len(test_df)
         row["num_features"] = len(training_features)
 
-    importance_rows = build_feature_importance_rows(
-        rf_model=rf_model,
+    importance_rows = []
+    importance_rows.extend(build_feature_importance_rows(
+        fitted_model=rf_model,
+        model_name="Random Forest",
         training_features=training_features,
         notes=notes
-    )
+    ))
+    importance_rows.extend(build_feature_importance_rows(
+        fitted_model=xgb_model,
+        model_name="XGBoost",
+        training_features=training_features,
+        notes=notes
+    ))
 
     return evaluation_rows, importance_rows
 
@@ -237,6 +265,9 @@ def plot_results_table(result_rows):
     sort_cols = [c for c in ["feature_set", "model"] if c in df_table.columns]
     if sort_cols:
         df_table = df_table.sort_values(sort_cols).reset_index(drop=True)
+
+    print("\n=== Evaluation Results ===")
+    print(df_table.to_string(index=False))
 
     fig_height = max(3, 0.45 * len(df_table) + 1.5)
     fig, ax = plt.subplots(figsize=(12, fig_height))
@@ -282,4 +313,44 @@ def plot_results_table(result_rows):
             cell.set_text_props(weight="bold")
 
     plt.tight_layout()
-    plt.show()
+    plt.show(block=False)
+    plt.pause(0.1)
+    
+def plot_roc_curve(model, X_test, y_test, model_name="Model", ax = None):
+    """
+    Plots ROC curve and returns AUC score.
+
+    Parameters:
+        model: trained sklearn model (must support predict_proba)
+        X_test: test features
+        y_test: true labels
+        model_name: label for legend
+        ax: optional matplotlib axis (for multi-model plots)
+
+    Returns:
+        auc_score (float)
+    """
+
+    # Get probabilities for positive class
+    y_probs = model.predict_proba(X_test)[:, 1]
+
+    # Compute metrics
+    fpr, tpr, _ = roc_curve(y_test, y_probs)
+    auc_score = roc_auc_score(y_test, y_probs)
+
+    # Plot
+    if ax is None:
+        plt.figure()
+        plt.plot(fpr, tpr, label=f"{model_name} (AUC = {auc_score:.3f})")
+        plt.plot([0, 1], [0, 1], linestyle='--', label="Random")
+        plt.xlabel("False Positive Rate")
+        plt.ylabel("True Positive Rate")
+        plt.title("ROC Curve")
+        plt.legend()
+        plt.grid(True)
+        plt.show()
+    else:
+        ax.plot(fpr, tpr, label=f"{model_name} (AUC = {auc_score:.3f})")
+
+    return auc_score
+    

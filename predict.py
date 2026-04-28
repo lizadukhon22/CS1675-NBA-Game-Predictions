@@ -4,7 +4,7 @@ Run: python predict.py
 
 Provides and interactive interface for predicting NBA game outcomes (single game or full season)
 using the trained models. 
-    - Allows users to select model (Logistic Regression or Random Forest)
+    - Allows users to select model (Logistic Regression, Random Forest, XGBoost, or Ensemble)
     - Generates feature values for a given game
     - Computes win probabilities using the selected model
     - Displays predictions (both options) and visualizations (full season)
@@ -29,6 +29,8 @@ from model import (
     get_feature_matrix,
     train_logistic_model,
     train_random_forest_model,
+    train_xgboost_model,
+    train_soft_voting_ensemble,
     get_rest,
     get_rolling_stats
 )
@@ -43,6 +45,8 @@ team_list = build_team_list(all_names)
 X, y = get_feature_matrix(df)
 log_model, log_scaler = train_logistic_model(X, y)
 rf_model = train_random_forest_model(X, y)
+xgb_model = train_xgboost_model(X, y)
+ensemble_model = train_soft_voting_ensemble(log_model, log_scaler, rf_model, xgb_model)
 
 # to be updated when user chooses model
 curr_model = None
@@ -75,21 +79,23 @@ def predict_game_prob(home_id, away_id, game_date):
     home_rest = get_rest(stats, home_id, game_date)
     away_rest = get_rest(stats, away_id, game_date)
 
-    feature_map = {
-        "offRatingDiff": h["roll_offRating"] - a["roll_offRating"],
-        "defRatingDiff": h["roll_defRating"] - a["roll_defRating"],
-        "netRatingDiff": h["roll_netRating"] - a["roll_netRating"],
-        "restDiff": home_rest - away_rest,
-        "b2bDiff": (1 if home_rest < 1.5 else 0) - (1 if away_rest < 1.5 else 0),
-    }
+    feature_map = {}
+    for source_col, diff_col in model.ROLLING_FEATURES.items():
+        feature_map[diff_col] = h[f"roll_{source_col}"] - a[f"roll_{source_col}"]
+
+    feature_map["restDiff"] = home_rest - away_rest
+    feature_map["b2bDiff"] = (1 if home_rest < 1.5 else 0) - (1 if away_rest < 1.5 else 0)
 
     feature_map["absNetRatingDiff"] = abs(feature_map["netRatingDiff"])
     feature_map["closeGame"] = int(feature_map["absNetRatingDiff"] < 5)
     feature_map["netRating_b2b"] = feature_map["netRatingDiff"] * feature_map["b2bDiff"]
+    feature_map["absRating_b2b"] = feature_map["absNetRatingDiff"] * feature_map["b2bDiff"]
     feature_map["netRating_rest"] = feature_map["netRatingDiff"] * feature_map["restDiff"]
     feature_map["close_b2b"] = feature_map["closeGame"] * feature_map["b2bDiff"]
 
     features = np.array([[feature_map[f] for f in model.FEATURES]])
+    if not np.isfinite(features).all():
+        return None
 
     if curr_scaler is not None:
         features = curr_scaler.transform(features)
@@ -97,13 +103,15 @@ def predict_game_prob(home_id, away_id, game_date):
     return curr_model.predict_proba(features)[0, 1]
 
 def choose_model():
-    """ 
+    """
     Have user choose which model to use
     """
     global curr_model, curr_scaler, curr_model_name
     print("\nSelect predicition model:")
     print("    1. Logistic Regresion")
     print("    2. Random Forest")
+    print("    3. XGBoost")
+    print("    4. Soft Voting Ensemble")
     
     while True:
         choice = input("Enter choice: ").strip()
@@ -118,8 +126,18 @@ def choose_model():
             curr_scaler = None
             curr_model_name = "Random Forest"
             break
+        elif choice == "3":
+            curr_model = xgb_model
+            curr_scaler = None
+            curr_model_name = "XGBoost"
+            break
+        elif choice == "4":
+            curr_model = ensemble_model
+            curr_scaler = None
+            curr_model_name = "Soft Voting Ensemble"
+            break
         else:
-            print("\nInvalid input - enter 1 or 2.")
+            print("\nInvalid input - enter 1, 2, 3, or 4.")
 
 # create graph 
 def plot_game_by_game_predictions(game_dates, probs, actual_results, team_name, season_label):
