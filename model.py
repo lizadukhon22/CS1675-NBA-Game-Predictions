@@ -21,6 +21,8 @@ DATA_DIR = ROOT_DIR / "data"
 
 # WINDOW is how many past games to use for rolling averages (with min_periods=3)
 WINDOW = 10
+
+# These are the features from our original model - used for evaluation
 BASE_FEATURES = [
     "netRatingDiff",
     "b2bDiff",
@@ -28,7 +30,7 @@ BASE_FEATURES = [
     "netRating_b2b"
 ]
 
-
+# map raw stats to home-away difference features
 ROLLING_FEATURES = {
     "offRating": "offRatingDiff",
     "defRating": "defRatingDiff",
@@ -50,8 +52,39 @@ ROLLING_FEATURES = {
     "seasonWinPct": "seasonWinPctDiff",
 }
 
+# Additional features extracted from csv, used for evaluation
 ADDITIONAL_FEATURES = [
-    "netRatingDiff",
+    "offRatingDiff",
+    "defRatingDiff",
+    "restDiff",
+    "netRating_rest",
+    "absNetRatingDiff",
+    "absRating_b2b",
+    "close_b2b",
+    "fieldGoalPctDiff",
+    "threePointPctDiff",
+    "freeThrowPctDiff",
+    "reboundsTotalDiff",
+    "offensiveReboundsDiff",
+    "defensiveReboundsDiff",
+    "turnoversDiff",
+    "assistsDiff",
+    "stealsDiff",
+    "blocksDiff",
+    "benchPointsDiff",
+    "fastBreakPointsDiff",
+    "paintPointsDiff",
+    "secondChancePointsDiff",
+    "seasonWinPctDiff",
+]
+
+# This is the entire feature set extracted from the teamstats csv
+EXPANDED_FEATURES = BASE_FEATURES + [
+    feature for feature in ADDITIONAL_FEATURES if feature not in BASE_FEATURES
+]
+
+# These are the selected features that the model runs on
+FEATURES = [
     "seasonWinPctDiff",
     "absNetRatingDiff",
     "defRatingDiff",
@@ -61,12 +94,6 @@ ADDITIONAL_FEATURES = [
     "assistsDiff",
     "freeThrowPctDiff"
 ]
-
-EXPANDED_FEATURES = ADDITIONAL_FEATURES 
-#BASE_FEATURES + [
-#    feature for feature in ADDITIONAL_FEATURES if feature not in BASE_FEATURES
-#]
-FEATURES = EXPANDED_FEATURES
 
 def load_data():
     """
