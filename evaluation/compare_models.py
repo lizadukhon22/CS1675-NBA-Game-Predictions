@@ -25,8 +25,8 @@ from model import BASE_FEATURES, EXPANDED_FEATURES, FEATURES
 
 FEATURE_SETS = [
     ("Base features", BASE_FEATURES),
-    ("Current features", FEATURES),
     ("Expanded rolling features", EXPANDED_FEATURES),
+    ("Selected features", FEATURES)
 ]
 
 

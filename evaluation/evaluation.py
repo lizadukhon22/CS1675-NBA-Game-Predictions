@@ -250,12 +250,8 @@ def plot_results_table(result_rows):
 
     df_table = pd.DataFrame(result_rows).copy()
 
-    # Rename features column to make table clearer
-    if "features" in df_table.columns:
-        df_table["feature_set"] = df_table["features"]
-
     # Keep only columns we want to compare
-    cols = ["feature_set", "model", "roc_auc", "f1", "accuracy", "precision", "recall"]
+    cols = ["notes", "model", "roc_auc", "f1", "accuracy", "precision", "recall"]
     df_table = df_table[[c for c in cols if c in df_table.columns]]
 
     # Round numeric columns
@@ -263,12 +259,8 @@ def plot_results_table(result_rows):
         if col in df_table.columns:
             df_table[col] = df_table[col].round(4)
 
-    # Optional: make feature strings easier to read
-    if "feature_set" in df_table.columns:
-        df_table["feature_set"] = df_table["feature_set"].str.replace(",", ", ")
-
     # Sort rows so models stay grouped under each feature set
-    sort_cols = [c for c in ["feature_set", "model"] if c in df_table.columns]
+    sort_cols = [c for c in ["notes", "model"] if c in df_table.columns]
     if sort_cols:
         df_table = df_table.sort_values(sort_cols).reset_index(drop=True)
 

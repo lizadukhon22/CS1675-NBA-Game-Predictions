@@ -23,7 +23,7 @@ from evaluation.evaluation import IMPORTANCE_FILE, RESULTS_FILE
 
 METRICS = ["roc_auc", "f1", "accuracy", "precision", "recall"]
 BASE_NOTE = "Base features"
-CURRENT_NOTE = "Current features"
+CURRENT_NOTE = "Selected features"
 EXPANDED_NOTE = "Expanded rolling features"
 TREE_MODELS = ["Random Forest", "XGBoost"]
 FEATURE_SELECTION_RESULTS_FILE = ROOT_DIR / "reports" / "feature_selection_results.csv"
